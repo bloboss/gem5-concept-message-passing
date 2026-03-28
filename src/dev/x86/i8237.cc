@@ -168,7 +168,7 @@ I8237::setRequestBit(Register &reg, const uint8_t &command)
 Tick
 I8237::read(PacketPtr pkt)
 {
-    regs.read(pkt->getAddr(), pkt->getPtr<void>(), pkt->getSize());
+    regs.read(pkt->getAddr(), pkt->getPtr<uint8_t>(), pkt->getSize());
     pkt->makeAtomicResponse();
     return latency;
 }
@@ -176,7 +176,7 @@ I8237::read(PacketPtr pkt)
 Tick
 I8237::write(PacketPtr pkt)
 {
-    regs.write(pkt->getAddr(), pkt->getPtr<void>(), pkt->getSize());
+    regs.write(pkt->getAddr(), pkt->getPtr<uint8_t>(), pkt->getSize());
     pkt->makeAtomicResponse();
     return latency;
 }

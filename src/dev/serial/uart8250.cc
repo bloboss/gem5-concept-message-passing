@@ -241,7 +241,7 @@ Uart8250::read(PacketPtr pkt)
 
     DPRINTF(Uart, "Read register %#x\n", daddr);
 
-    registers.read(daddr, pkt->getPtr<void>(), pkt->getSize());
+    registers.read(daddr, pkt->getPtr<uint8_t>(), pkt->getSize());
 
     pkt->makeAtomicResponse();
     return pioDelay;
@@ -255,7 +255,7 @@ Uart8250::write(PacketPtr pkt)
     DPRINTF(Uart, "Write register %#x value %#x\n", daddr,
             pkt->getRaw<uint8_t>());
 
-    registers.write(daddr, pkt->getPtr<void>(), pkt->getSize());
+    registers.write(daddr, pkt->getPtr<uint8_t>(), pkt->getSize());
 
     pkt->makeAtomicResponse();
     return pioDelay;

@@ -439,7 +439,7 @@ AMDGPUDevice::writeConfig(PacketPtr pkt)
         DPRINTF(AMDGPUDevice, "Writing PXCAP offset %d size %d\n",
                 pxcap_offset, pkt->getSize());
 
-        memcpy(pxcap_data + pxcap_offset, pkt->getConstPtr<void>(),
+        memcpy(pxcap_data + pxcap_offset, pkt->getConstPtr<uint8_t>(),
                pkt->getSize());
     }
 

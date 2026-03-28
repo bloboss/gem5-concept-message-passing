@@ -163,7 +163,7 @@ IdeController::readConfig(PacketPtr pkt)
 
     size_t size = pkt->getSize();
 
-    configSpaceRegs.read(offset, pkt->getPtr<void>(), size);
+    configSpaceRegs.read(offset, pkt->getPtr<uint8_t>(), size);
 
     DPRINTF(IdeCtrl, "PCI read offset: %#x size: %d data: %#x\n", offset, size,
             pkt->getUintX(ByteOrder::little));
@@ -186,7 +186,7 @@ IdeController::writeConfig(PacketPtr pkt)
     DPRINTF(IdeCtrl, "PCI write offset: %#x size: %d data: %#x\n",
             offset, size, pkt->getUintX(ByteOrder::little));
 
-    configSpaceRegs.write(offset, pkt->getConstPtr<void>(), size);
+    configSpaceRegs.write(offset, pkt->getConstPtr<uint8_t>(), size);
 
     pkt->makeAtomicResponse();
     return configDelay;

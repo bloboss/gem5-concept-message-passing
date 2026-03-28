@@ -824,7 +824,7 @@ LSQ::StoreBuffer::forwardStoreData(LSQRequestPtr load,
         load_size, load_addr, slot_number,
         store_addr, addr_offset);
 
-    void *load_packet_data = load->packet->getPtr<void>();
+    void *load_packet_data = load->packet->getPtr<uint8_t>();
     void *store_packet_data = store->packet->getPtr<uint8_t>() + addr_offset;
 
     std::memcpy(load_packet_data, store_packet_data, load_size);

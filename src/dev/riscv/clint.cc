@@ -159,7 +159,7 @@ Clint::read(PacketPtr pkt)
         pkt->getAddr(), pkt->getSize(), is_atomic);
 
     // Perform register read
-    registers.read(pkt->getAddr(), pkt->getPtr<void>(), pkt->getSize());
+    registers.read(pkt->getAddr(), pkt->getPtr<uint8_t>(), pkt->getSize());
 
     if (is_atomic) {
         // Perform atomic operation
@@ -179,7 +179,7 @@ Clint::write(PacketPtr pkt)
         pkt->getAddr(), pkt->getSize());
 
     // Perform register write
-    registers.write(pkt->getAddr(), pkt->getPtr<void>(), pkt->getSize());
+    registers.write(pkt->getAddr(), pkt->getPtr<uint8_t>(), pkt->getSize());
 
     pkt->makeResponse();
     return pioDelay;

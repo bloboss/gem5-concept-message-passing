@@ -352,7 +352,7 @@ uint64_t
 Packet::getUintX(ByteOrder endian) const
 {
     auto [val, success] =
-        gem5::getUintX(getConstPtr<void>(), getSize(), endian);
+        gem5::getUintX(getConstPtr<uint8_t>(), getSize(), endian);
     panic_if(!success, "%i isn't a supported word size.\n", getSize());
     return val;
 }
@@ -360,7 +360,7 @@ Packet::getUintX(ByteOrder endian) const
 void
 Packet::setUintX(uint64_t w, ByteOrder endian)
 {
-    bool success = gem5::setUintX(w, getPtr<void>(), getSize(), endian);
+    bool success = gem5::setUintX(w, getPtr<uint8_t>(), getSize(), endian);
     panic_if(!success, "%i isn't a supported word size.\n", getSize());
 }
 

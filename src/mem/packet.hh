@@ -49,6 +49,8 @@
 
 #include <bitset>
 #include <cassert>
+#include <concepts>
+#include <cstddef>
 #include <initializer_list>
 #include <list>
 
@@ -61,6 +63,7 @@
 #include "base/printable.hh"
 #include "base/types.hh"
 #include "mem/htm.hh"
+#include "mem/packet_concepts.hh"
 #include "mem/request.hh"
 #include "sim/byteswap.hh"
 
@@ -572,15 +575,33 @@ class Packet : public Printable, public Extensible<Packet>
      * @return The topmost state of type T
      */
     template <typename T>
+        requires std::derived_from<T, SenderState>
     T * findNextSenderState() const
     {
-        T *t = NULL;
+        T *t = nullptr;
         SenderState* sender_state = senderState;
-        while (t == NULL && sender_state != NULL) {
+        while (t == nullptr && sender_state != nullptr) {
             t = dynamic_cast<T*>(sender_state);
             sender_state = sender_state->predecessor;
         }
         return t;
+    }
+
+    /**
+     * Pop the top of the state stack and dynamic_cast it to type T.
+     * Asserts that the cast succeeds.  This is a type-safe alternative
+     * to popSenderState() followed by a manual dynamic_cast.
+     *
+     * @return The popped state, cast to T*
+     */
+    template <typename T>
+        requires std::derived_from<T, SenderState>
+    T * popSenderStateAs()
+    {
+        SenderState *raw = popSenderState();
+        T *typed = dynamic_cast<T*>(raw);
+        assert(typed != nullptr);
+        return typed;
     }
 
     /// Return the string name of the cmd field (for debugging and
@@ -1170,12 +1191,12 @@ class Packet : public Printable, public Extensible<Packet>
      * copied once into the location originally set. On the way back
      * to the source, no copies are necessary.
      */
-    template <typename T>
+    template <PacketDataType T>
     void
     dataStatic(T *p)
     {
         assert(flags.noneSet(STATIC_DATA|DYNAMIC_DATA));
-        data = (PacketDataPtr)p;
+        data = reinterpret_cast<PacketDataPtr>(p);
         flags.set(STATIC_DATA);
     }
 
@@ -1187,12 +1208,13 @@ class Packet : public Printable, public Extensible<Packet>
      * and non-const data pointer and cleverly choose between
      * them. Note that this is only allowed for static data.
      */
-    template <typename T>
+    template <PacketDataType T>
     void
     dataStaticConst(const T *p)
     {
         assert(flags.noneSet(STATIC_DATA|DYNAMIC_DATA));
-        data = const_cast<PacketDataPtr>(p);
+        data = const_cast<PacketDataPtr>(
+            reinterpret_cast<const uint8_t*>(p));
         flags.set(STATIC_DATA);
     }
 
@@ -1208,69 +1230,69 @@ class Packet : public Printable, public Extensible<Packet>
      * final memcpy is needed to extract the data from the packet
      * before it is deallocated.
      */
-    template <typename T>
+    template <PacketDataType T>
     void
     dataDynamic(T *p)
     {
         assert(flags.noneSet(STATIC_DATA|DYNAMIC_DATA));
-        data = (PacketDataPtr)p;
+        data = reinterpret_cast<PacketDataPtr>(p);
         flags.set(DYNAMIC_DATA);
     }
 
     /**
      * get a pointer to the data ptr.
      */
-    template <typename T>
+    template <PacketDataType T>
     T*
     getPtr()
     {
         assert(flags.isSet(STATIC_DATA|DYNAMIC_DATA));
         assert(!isMaskedWrite());
-        return (T*)data;
+        return reinterpret_cast<T*>(data);
     }
 
-    template <typename T>
+    template <PacketDataType T>
     const T*
     getConstPtr() const
     {
         assert(flags.isSet(STATIC_DATA|DYNAMIC_DATA));
-        return (const T*)data;
+        return reinterpret_cast<const T*>(data);
     }
 
     /**
      * Get the data in the packet byte swapped from big endian to
      * host endian.
      */
-    template <typename T>
+    template <PacketScalarType T>
     T getBE() const;
 
     /**
      * Get the data in the packet byte swapped from little endian to
      * host endian.
      */
-    template <typename T>
+    template <PacketScalarType T>
     T getLE() const;
 
     /**
      * Get the data in the packet byte swapped from the specified
      * endianness.
      */
-    template <typename T>
+    template <PacketScalarType T>
     T get(ByteOrder endian) const;
 
     /** Set the value in the data pointer to v as big endian. */
-    template <typename T>
+    template <PacketScalarType T>
     void setBE(T v);
 
     /** Set the value in the data pointer to v as little endian. */
-    template <typename T>
+    template <PacketScalarType T>
     void setLE(T v);
 
     /**
      * Set the value in the data pointer to v using the specified
      * endianness.
      */
-    template <typename T>
+    template <PacketScalarType T>
     void set(T v, ByteOrder endian);
 
     /**
@@ -1378,11 +1400,11 @@ class Packet : public Printable, public Extensible<Packet>
     /** @} */
 
     /** Get the data in the packet without byte swapping. */
-    template <typename T>
+    template <PacketScalarType T>
     T getRaw() const;
 
     /** Set the value in the data pointer to v without byte swapping. */
-    template <typename T>
+    template <PacketScalarType T>
     void setRaw(T v);
 
   public:

@@ -108,7 +108,7 @@ ResetControllerExample::write(PacketPtr pkt)
         pkt->setBadAddress();
     } else {
         auto addr = pkt->getAddr() - pioAddr;
-        registers.write(addr, pkt->getPtr<void>(), size);
+        registers.write(addr, pkt->getPtr<uint8_t>(), size);
     }
     return pioDelay;
 }

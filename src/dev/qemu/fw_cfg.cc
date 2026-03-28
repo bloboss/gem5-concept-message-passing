@@ -245,7 +245,7 @@ FwCfgIo::read(PacketPtr pkt)
         warn("Read from firmware config selector register not supported.");
     } else if (addr == dataAddr) {
         if (size == 1) {
-            readItem(pkt->getPtr<void>(), size);
+            readItem(pkt->getPtr<uint8_t>(), size);
         } else {
             warn("Read from firmware config data register with width %d not "
                     "supported.", size);
@@ -307,7 +307,7 @@ FwCfgMmio::read(PacketPtr pkt)
         warn("Read from firmware config selector register not supported.");
     } else if (addr == dataAddr) {
         if (size == dataSize) {
-            readItem(pkt->getPtr<void>(), size);
+            readItem(pkt->getPtr<uint8_t>(), size);
         } else {
             warn("Read from firmware config data register with width %d not "
                     "supported.", size);

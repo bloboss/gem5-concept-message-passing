@@ -47,40 +47,40 @@
 namespace gem5
 {
 
-template <typename T>
+template <PacketScalarType T>
 inline T
 Packet::getRaw() const
 {
     assert(flags.isSet(STATIC_DATA|DYNAMIC_DATA));
     assert(sizeof(T) <= size);
-    return *(T*)data;
+    return *reinterpret_cast<const T*>(data);
 }
 
-template <typename T>
+template <PacketScalarType T>
 inline void
 Packet::setRaw(T v)
 {
     assert(flags.isSet(STATIC_DATA|DYNAMIC_DATA));
     assert(sizeof(T) <= size);
-    *(T*)data = v;
+    *reinterpret_cast<T*>(data) = v;
 }
 
 
-template <typename T>
+template <PacketScalarType T>
 inline T
 Packet::getBE() const
 {
     return betoh(getRaw<T>());
 }
 
-template <typename T>
+template <PacketScalarType T>
 inline T
 Packet::getLE() const
 {
     return letoh(getRaw<T>());
 }
 
-template <typename T>
+template <PacketScalarType T>
 inline T
 Packet::get(ByteOrder endian) const
 {
@@ -96,21 +96,21 @@ Packet::get(ByteOrder endian) const
     };
 }
 
-template <typename T>
+template <PacketScalarType T>
 inline void
 Packet::setBE(T v)
 {
     setRaw(htobe(v));
 }
 
-template <typename T>
+template <PacketScalarType T>
 inline void
 Packet::setLE(T v)
 {
     setRaw(htole(v));
 }
 
-template <typename T>
+template <PacketScalarType T>
 inline void
 Packet::set(T v, ByteOrder endian)
 {

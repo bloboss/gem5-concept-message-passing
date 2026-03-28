@@ -115,7 +115,7 @@ SysSecCtrl::read(PacketPtr pkt)
     assert(pkt->getAddr() >= pioAddr && pkt->getAddr() < pioAddr + pioSize);
     Addr daddr = pkt->getAddr() - pioAddr;
 
-    regBank.read(daddr, pkt->getPtr<void>(), pkt->getSize());
+    regBank.read(daddr, pkt->getPtr<uint8_t>(), pkt->getSize());
 
     pkt->makeAtomicResponse();
     return pioDelay;
@@ -127,7 +127,7 @@ SysSecCtrl::write(PacketPtr pkt)
     assert(pkt->getAddr() >= pioAddr && pkt->getAddr() < pioAddr + pioSize);
     Addr daddr = pkt->getAddr() - pioAddr;
 
-    regBank.write(daddr, pkt->getPtr<void>(), pkt->getSize());
+    regBank.write(daddr, pkt->getPtr<uint8_t>(), pkt->getSize());
 
     pkt->makeAtomicResponse();
     return pioDelay;

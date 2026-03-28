@@ -603,7 +603,7 @@ CfiMemory::write(PacketPtr pkt)
           // Write to the buffer and check if a writeback is needed
           // (if the buffer is full)
           auto writeback = programBuffer.write(
-              flash_address, pkt->getPtr<void>(), pkt->getSize());
+              flash_address, pkt->getPtr<uint8_t>(), pkt->getSize());
 
           if (writeback) {
               if (new_cmd == CfiCommand::BUFFERED_PROGRAM_CONFIRM) {
