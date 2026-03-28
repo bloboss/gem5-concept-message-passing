@@ -746,7 +746,7 @@ AtomicSimpleCPU::fetchInstMem()
 
     // ifetch_req is initialized to read the instruction
     // directly into the CPU object's inst field.
-    pkt.dataStatic(decoder->moreBytesPtr());
+    pkt.dataStatic(static_cast<uint8_t*>(decoder->moreBytesPtr()));
 
     Tick latency = sendPacket(icachePort, &pkt);
     panic_if(pkt.isError(), "Instruction fetch (%s) failed: %s",

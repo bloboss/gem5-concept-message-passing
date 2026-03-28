@@ -268,7 +268,7 @@ Checker<DynInstPtr>::verify(const DynInstPtr &completed_inst)
                 } else {
                     PacketPtr pkt = new Packet(mem_req, MemCmd::ReadReq);
 
-                    pkt->dataStatic(decoder->moreBytesPtr());
+                    pkt->dataStatic(static_cast<uint8_t*>(decoder->moreBytesPtr()));
                     icachePort->sendFunctional(pkt);
 
                     delete pkt;

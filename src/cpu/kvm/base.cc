@@ -1138,7 +1138,7 @@ BaseKvmCPU::doMMIOAccess(Addr paddr, void *data, int size, bool write)
 
     const MemCmd cmd(write ? MemCmd::WriteReq : MemCmd::ReadReq);
     PacketPtr pkt = new Packet(mmio_req, cmd);
-    pkt->dataStatic(data);
+    pkt->dataStatic(static_cast<uint8_t*>(data));
 
     if (mmio_req->isLocalAccess()) {
         // Since the PC has already been advanced by KVM, set the next
