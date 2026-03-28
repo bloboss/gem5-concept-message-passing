@@ -143,6 +143,7 @@ class VectorMacroInst : public RiscvMacroInst
     const int8_t vlmul;
     const uint32_t sew;
     const float vflmul;
+    mutable bool flagsPropagated = false;
 
     VectorMacroInst(const char* mnem, ExtMachInst _machInst,
                    OpClass __opClass, uint32_t _elen, uint32_t _vlen)
@@ -157,6 +158,50 @@ class VectorMacroInst : public RiscvMacroInst
         vflmul(vlmul < 0 ? (1.0 / (1 << (-vlmul))) : (1 << vlmul))
     {
         this->flags[IsVector] = true;
+    }
+
+    /**
+     * Propagate ISA-level flags from the macro-op to its micro-ops.
+     *
+     * Flags like IsNonSpeculative are propagated to all micro-ops.
+     * IsSerializeAfter/IsSquashAfter go to the last micro-op only.
+     * IsSerializeBefore goes to the first micro-op only.
+     */
+    void propagateFlagsToMicroops() const
+    {
+        if (microops.empty())
+            return;
+
+        for (auto &uop : microops) {
+            if (flags[IsNonSpeculative])
+                uop->setFlag(IsNonSpeculative);
+            if (flags[IsSerializing])
+                uop->setFlag(IsSerializing);
+            if (flags[IsUnverifiable])
+                uop->setFlag(IsUnverifiable);
+            if (flags[IsQuiesce])
+                uop->setFlag(IsQuiesce);
+        }
+
+        if (flags[IsSerializeBefore])
+            microops.front()->setFlag(IsSerializeBefore);
+
+        if (flags[IsSerializeAfter])
+            microops.back()->setFlag(IsSerializeAfter);
+
+        if (flags[IsSquashAfter])
+            microops.back()->setFlag(IsSquashAfter);
+    }
+
+  public:
+    StaticInstPtr
+    fetchMicroop(MicroPC upc) const override
+    {
+        if (!flagsPropagated) {
+            propagateFlagsToMicroops();
+            flagsPropagated = true;
+        }
+        return microops[upc];
     }
 };
 
