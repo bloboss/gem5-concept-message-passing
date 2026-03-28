@@ -103,7 +103,7 @@ ItsProcess::doRead(Yield &yield, Addr addr, void *ptr, size_t size)
     req->taskId(context_switch_task_id::DMA);
 
     a.pkt = new Packet(req, MemCmd::ReadReq);
-    a.pkt->dataStatic(ptr);
+    a.pkt->dataStatic(static_cast<uint8_t*>(ptr));
 
     a.delay = 0;
 
@@ -127,7 +127,7 @@ ItsProcess::doWrite(Yield &yield, Addr addr, void *ptr, size_t size)
     req->taskId(context_switch_task_id::DMA);
 
     a.pkt = new Packet(req, MemCmd::WriteReq);
-    a.pkt->dataStatic(ptr);
+    a.pkt->dataStatic(static_cast<uint8_t*>(ptr));
 
     a.delay = 0;
 

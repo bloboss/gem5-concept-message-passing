@@ -168,7 +168,7 @@ payload2packet(RequestorID _id, tlm::tlm_generic_payload &trans)
      * the gem5 world as a response.
      */
     auto pkt = new Packet(req, cmd);
-    pkt->dataStatic(trans.get_data_ptr());
+    pkt->dataStatic(static_cast<uint8_t*>(trans.get_data_ptr()));
 
     // Apply all conversion steps necessary in this specific setup.
     for (auto &step : extraPayloadToPacketSteps) {
