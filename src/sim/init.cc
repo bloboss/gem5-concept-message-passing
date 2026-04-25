@@ -142,6 +142,13 @@ EmbeddedPyBind::initAll(py::module_ &_m5)
     initPending("");
 }
 
+// The GEM5_PYBIND_MODULE_INIT macro registers _m5 for the embedded build,
+// where C++ main() calls PyImport_AppendInittab() before Py_Initialize().
+// When building _m5 as a standalone Python extension (library model),
+// PyInit__m5 is defined in src/sim/gem5_extension.cc instead, and this
+// registration would conflict.  Suppress it with -DGEM5_EXTENSION_MODULE.
+#ifndef GEM5_EXTENSION_MODULE
 GEM5_PYBIND_MODULE_INIT(_m5, EmbeddedPyBind::initAll)
+#endif // GEM5_EXTENSION_MODULE
 
 } // namespace gem5

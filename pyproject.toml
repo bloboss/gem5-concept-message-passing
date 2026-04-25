@@ -10,3 +10,106 @@ known_m5 = "m5"
 known_underscore_m5 = "_m5,slicc"
 known_gem5 = "gem5"
 sections="FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,M5,UNDERSCORE_M5,GEM5,LOCALFOLDER"
+
+# ---------------------------------------------------------------------------
+# gem5 library-mode packaging (Option A: _m5 as Python extension module)
+# ---------------------------------------------------------------------------
+#
+# This section supports the "library model" in which gem5's C++ simulation
+# engine is built as an importable Python extension (_m5.so) rather than a
+# standalone binary.  Users can then drive simulations from any Python
+# interpreter:
+#
+#   pip install gem5          # installs _m5.so + m5/ + gem5/ packages
+#
+#   python my_sim.py          # runs from any Python; no gem5 binary needed
+#
+# HOW TO BUILD
+# ============
+# The _m5.so extension must be compiled by SCons before `pip install` is run.
+# setuptools cannot invoke SCons automatically, so the workflow is:
+#
+#   # 1. Build the C++ extension (see SCONS BUILD NOTES below).
+#   scons build/ALL/_m5$(python3 -c "import sysconfig; \
+#       print(sysconfig.get_config_var('EXT_SUFFIX'))")     \
+#       GEM5_EXTENSION_MODULE=1
+#
+#   # 2. Copy the .so next to the Python packages so setuptools picks it up.
+#   cp build/ALL/_m5*.so src/python/
+#
+#   # 3. Install (editable for development; regular for distribution).
+#   pip install -e .          # development
+#   pip install .             # distribution
+#
+# SCONS BUILD NOTES
+# =================
+# The following changes to the SCons build system are required to support
+# the -DGEM5_EXTENSION_MODULE variant.  They are described here for the PR
+# reviewer; the SCons implementation is a follow-on task.
+#
+# 1. New SCons variable:   GEM5_EXTENSION_MODULE = 0 | 1
+#    Default: 0 (existing embedded build, no change).
+#
+# 2. When GEM5_EXTENSION_MODULE=1:
+#    a. Compile src/sim/gem5_extension.cc instead of src/sim/main.cc.
+#    b. Define -DGEM5_EXTENSION_MODULE for all C++ TUs so the
+#       #ifndef guard in src/sim/init.cc takes effect.
+#    c. Do NOT compile src/python/embedded.cc or src/python/importer.cc
+#       (the bytecode bundle is unused in library mode).
+#    d. Link the result as a shared library named:
+#         _m5<EXT_SUFFIX>   (e.g. _m5.cpython-311-x86_64-linux-gnu.so)
+#       where EXT_SUFFIX comes from Python's sysconfig module.
+#    e. Install target: copy the .so and src/python/{m5,gem5} to the
+#       chosen prefix.
+#
+# BACKWARD COMPATIBILITY
+# ======================
+# The gem5 console script entry-point calls m5.main() which parses argv
+# and runs the user script exactly as the binary does today.  Existing
+# scripts are fully compatible.
+
+[build-system]
+requires = ["setuptools >= 61", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "gem5"
+# Keep in sync with src/base/version.cc.
+version = "24.1.0.0"
+description = "gem5 computer architecture simulator – library mode"
+license = { text = "BSD-3-Clause AND MIT" }
+requires-python = ">=3.8"
+# Runtime dependencies of the pure-Python layer only.
+# _m5.so is a build-time artefact, not a pip dependency.
+dependencies = [
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = ["mypy", "black", "isort"]
+
+# ---------------------------------------------------------------------------
+# Package discovery: all Python source lives under src/python/.
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["src/python"]
+include = ["m5*", "gem5*"]
+
+[tool.setuptools.package-dir]
+"" = "src/python"
+
+# ---------------------------------------------------------------------------
+# Data files: include _m5.so once it has been copied into src/python/.
+# ---------------------------------------------------------------------------
+[tool.setuptools.package-data]
+"" = ["_m5*.so", "_m5*.pyd"]
+
+# ---------------------------------------------------------------------------
+# Console scripts
+# ---------------------------------------------------------------------------
+# `gem5` script: mirrors the binary.  It imports _m5 (which triggers
+# PyInit__m5 → EmbeddedPyBind::initAll) and then calls m5.main() which
+# parses argv and runs the user's script.  Existing invocations like
+# `gem5 my_script.py --option val` continue to work unchanged.
+[project.scripts]
+gem5 = "m5.main:main"

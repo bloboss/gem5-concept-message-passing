@@ -41,6 +41,7 @@
 Import('*')
 
 PySource('gem5', 'gem5/__init__.py')
+PySource('gem5', 'gem5/run.py')
 PySource('gem5', 'gem5/coherence_protocol.py')
 PySource('gem5', 'gem5/isas.py')
 PySource('gem5', 'gem5/runtime.py')
