@@ -448,6 +448,104 @@ class Gem5(Executable):
         return super().declare(env, objs)
 
 
+class Gem5Extension(SharedLib):
+    '''Build _m5 as an importable Python extension module (library model).
+
+    Produces a Python-ABI-tagged shared library, e.g.:
+        build/ALL/_m5.cpython-311-x86_64-linux-gnu.so  (Linux)
+        build/ALL/_m5.cpython-311-darwin.so             (macOS)
+
+    This file, placed next to the m5/ and gem5/ Python packages, lets any
+    CPython interpreter load the gem5 simulation engine with a plain
+    ``import _m5``.  User scripts then drive simulation directly:
+
+        python my_config.py         # no gem5 binary needed
+            -> import _m5           # loads this .so, calls PyInit__m5
+            -> import m5, gem5
+            -> gem5.run(root)       # instantiate C++ objects and simulate
+
+    Source composition vs. the conventional gem5 binary
+    ----------------------------------------------------
+    Included (via extension_filter):
+      - All 'gem5 lib' sources: the full C++ simulation engine
+      - 'python'-tagged sources: pybind11 bindings, param_*.cc structs,
+        init.cc (compiled with GEM5_EXTENSION_MODULE defined to suppress
+        the conflicting GEM5_PYBIND_MODULE_INIT macro)
+
+    Excluded:
+      - 'main' tag     -> main.cc (replaced by gem5_extension.cc)
+      - 'm5_module' tag -> embedded.cc, importer.cc, and all PySource-
+                          generated .py.cc bytecode blobs (the Python
+                          packages are imported from the filesystem instead)
+
+    Added explicitly via with_tag('extension'):
+      - gem5_extension.cc (src/sim/SConscript, tag_gem5_lib=False)
+        Provides PyInit__m5 via PYBIND11_MODULE and calls
+        EmbeddedPyBind::initAll() to register all submodules.
+
+    Build variant
+    -------------
+    Only the 'opt' environment is used.  The ABI-tagged output filename
+    has no room for a variant label, and opt is the right quality level
+    for an installable package.  declare_all() skips debug and fast.
+
+    Object suffix
+    -------------
+    Extension objects use OBJSUFFIX + 'e' (e.g. .oe for opt) to avoid
+    colliding with the shared objects (.os) compiled for libgem5_opt.so.
+    '''
+
+    @classmethod
+    def declare_all(cls, env):
+        # Only the opt build produces the final .so; debug/fast would
+        # overwrite the same output filename.
+        if env['ENV_LABEL'] != 'opt':
+            return []
+        return super().declare_all(env)
+
+    def declare(self, env):
+        import sysconfig
+
+        # Python-ABI-tagged extension module suffix, e.g.:
+        #   .cpython-311-x86_64-linux-gnu.so   (Linux / CPython 3.11)
+        #   .cpython-311-darwin.so              (macOS / CPython 3.11)
+        #   .cp311-win_amd64.pyd                (Windows / CPython 3.11)
+        # Falls back to '.so' if sysconfig cannot determine the suffix.
+        ext_suffix = sysconfig.get_config_var('EXT_SUFFIX') or '.so'
+
+        env = env.Clone()
+
+        # Tell init.cc to omit GEM5_PYBIND_MODULE_INIT(_m5, ...) so that
+        # it does not conflict with PyInit__m5 in gem5_extension.cc.
+        env.Append(CPPDEFINES=['GEM5_EXTENSION_MODULE'])
+
+        # Use OBJSUFFIX + 'e' (e.g. '.oe') so extension objects do not
+        # collide with the '.os' objects compiled for libgem5_opt.so.
+        # env['OBJSUFFIX'] is already the expanded literal ('.o') in the
+        # variant clone, so string concatenation is safe here.
+        env['SHOBJSUFFIX'] = env['OBJSUFFIX'] + 'e'
+
+        # Drop the 'lib' prefix (avoids 'lib_m5.so') and replace the
+        # generic .so suffix with the full Python ABI tag so that
+        # `import _m5` resolves without any sys.path manipulation.
+        env['SHLIBPREFIX'] = ''
+        env['SHLIBSUFFIX'] = ext_suffix
+
+        objs = self.srcs_to_objs(env, self.sources(env))
+
+        # Embed the build timestamp, as other gem5 targets do.
+        date_obj = env.SharedObject(date_source)
+        env.Depends(date_obj, objs)
+
+        # Honour any SourceLib link-order constraints declared by sources.
+        libs = self.libs(env)
+        libs.sort(key=lambda l: l.priority, reverse=True)
+        if libs:
+            env.Append(LIBS=list(lib.source for lib in libs))
+
+        return env.SharedLibrary(self.target, [date_obj, objs])[0]
+
+
 class GTest(Executable):
     '''Create a unit test based on the google test framework.'''
     all = []
@@ -721,6 +819,13 @@ for ext in target_exts:
         needed_envs |= set(envs.keys())
         break
 
+# The Python extension module (_m5<EXT_SUFFIX>) does not encode a build
+# variant in its filename, so the generic loop above cannot map it to 'opt'.
+# Detect it explicitly: any target whose basename starts with '_m5' is an
+# extension module request, and Gem5Extension always builds with 'opt'.
+if any(os.path.basename(t).startswith('_m5') for t in BUILD_TARGETS):
+    needed_envs.add('opt')
+
 
 # SCons doesn't know to append a library suffix when there is a '.' in the
 # name. Use '_' instead.
@@ -738,10 +843,19 @@ SharedLib(lib_name, lib_filter)
 
 Gem5('gem5', with_any_tags('gem5 lib', 'main'))
 
+# Extension module filter: everything from the main library except:
+#   'main'      -> main.cc, replaced by gem5_extension.cc
+#   'm5_module' -> embedded.cc, importer.cc, and all PySource-generated
+#                  .py.cc bytecode blobs (filesystem imports used instead)
+# gem5_extension.cc is pulled in separately via with_tag('extension').
+extension_filter = (
+    with_tag('gem5 lib')
+    & without_tag('main')
+    & without_tag('m5_module')
+)
+Gem5Extension('_m5', extension_filter, with_tag('extension'))
 
-# Function to create a new build environment as clone of current
-# environment 'env' with modified object suffix and optional stripped
-# binary.
+
 for env in (envs[e] for e in needed_envs):
     for cls in TopLevelMeta.all:
         cls.declare_all(env)
